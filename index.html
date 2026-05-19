@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EPA Enforcement Check — Search Environmental Violations by Company</title>
+    <meta name="description" content="Search EPA enforcement records by company name. 178,000+ companies, 187,000+ facilities, $11.5B in penalties. Clean Air Act, Clean Water Act, RCRA, and more.">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #e0e0e0;
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+        .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+
+        header { text-align: center; padding: 40px 20px 30px; }
+        h1 { font-size: 2rem; color: #4CAF50; margin-bottom: 8px; }
+        .subtitle { color: #888; font-size: 0.95rem; }
+
+        .search-section { margin: 20px 0 30px; }
+        .search-input {
+            width: 100%;
+            padding: 14px 18px;
+            font-size: 1.1rem;
+            border: 2px solid #333;
+            border-radius: 8px;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .search-input:focus { border-color: #4CAF50; }
+        .search-hint { color: #666; font-size: 0.8rem; margin-top: 6px; }
+
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin: 20px 0 30px;
+            padding: 16px;
+            background: #1a1a1a;
+            border-radius: 8px;
+            border: 1px solid #252525;
+        }
+        .stat-item { text-align: center; }
+        .stat-value { font-size: 1.3rem; font-weight: 700; color: #4CAF50; }
+        .stat-label { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .results { margin: 20px 0; }
+        .result-count { color: #888; font-size: 0.85rem; margin-bottom: 12px; }
+
+        .result-card {
+            background: #1a1a1a;
+            border: 1px solid #252525;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .result-card:hover { border-color: #4CAF50; }
+        .result-name { font-size: 1.05rem; font-weight: 600; color: #e0e0e0; margin-bottom: 6px; }
+        .result-meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.85rem; color: #888; }
+        .result-meta span { white-space: nowrap; }
+        .penalty-val { color: #ff5252; font-weight: 600; }
+        .snc-badge {
+            background: #ff5252;
+            color: #fff;
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .program-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+        .program-tag {
+            background: #252525;
+            color: #aaa;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+        .program-tag.caa { border-left: 2px solid #ff9800; }
+        .program-tag.cwa { border-left: 2px solid #2196f3; }
+        .program-tag.rcra { border-left: 2px solid #9c27b0; }
+        .program-tag.sdwa { border-left: 2px solid #00bcd4; }
+        .program-tag.tri { border-left: 2px solid #f44336; }
+        .program-tag.ghg { border-left: 2px solid #607d8b; }
+
+        /* Detail panel */
+        .detail-panel {
+            display: none;
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 24px;
+            margin: 20px 0;
+        }
+        .detail-panel.active { display: block; }
+        .detail-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+        .detail-title { font-size: 1.4rem; font-weight: 700; color: #4CAF50; }
+        .close-btn {
+            background: none;
+            border: 1px solid #444;
+            color: #888;
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        .close-btn:hover { border-color: #888; color: #e0e0e0; }
+
+        .detail-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .detail-stat {
+            background: #1a1a1a;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .detail-stat .val { font-size: 1.1rem; font-weight: 700; color: #4CAF50; }
+        .detail-stat .lbl { font-size: 0.7rem; color: #888; text-transform: uppercase; }
+
+        .facilities-section { margin-top: 20px; }
+        .facilities-section h3 { color: #aaa; font-size: 0.9rem; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .facility-card {
+            background: #1a1a1a;
+            border: 1px solid #252525;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 8px;
+        }
+        .fac-name { font-weight: 600; color: #e0e0e0; font-size: 0.9rem; }
+        .fac-location { color: #888; font-size: 0.8rem; margin: 2px 0; }
+        .fac-stats { display: flex; flex-wrap: wrap; gap: 10px; font-size: 0.8rem; color: #888; margin-top: 6px; }
+        .fac-stats .penalty { color: #ff5252; }
+        .fac-programs { margin-top: 4px; }
+        .fac-badge {
+            display: inline-block;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            margin-right: 3px;
+        }
+        .fac-badge.active { background: #1b5e20; color: #81c784; }
+        .fac-badge.inactive { background: #333; color: #888; }
+        .fac-badge.major { background: #4a148c; color: #ce93d8; }
+        .fac-badge.snc { background: #b71c1c; color: #ef9a9a; }
+
+        .compliance-status {
+            display: inline-block;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+        .compliance-status.violation { background: #4a1010; color: #ff8a80; }
+        .compliance-status.compliant { background: #1b3a1b; color: #81c784; }
+
+        .fac-link {
+            display: inline-block;
+            color: #4CAF50;
+            font-size: 0.75rem;
+            text-decoration: none;
+            margin-top: 4px;
+        }
+        .fac-link:hover { text-decoration: underline; }
+
+        .program-detail {
+            margin-top: 6px;
+            padding: 6px 8px;
+            background: #151515;
+            border-radius: 4px;
+            font-size: 0.78rem;
+            color: #999;
+        }
+        .program-detail .pd-label { color: #aaa; font-weight: 500; }
+
+        .ej-indicator {
+            color: #ffb74d;
+            font-size: 0.75rem;
+        }
+
+        .loading { text-align: center; padding: 40px; color: #666; }
+        .no-results { text-align: center; padding: 40px; color: #666; }
+        .more-btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            color: #888;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+        .more-btn:hover { border-color: #4CAF50; color: #e0e0e0; }
+
+        .show-more-fac {
+            background: none;
+            border: none;
+            color: #4CAF50;
+            cursor: pointer;
+            font-size: 0.8rem;
+            padding: 4px 0;
+            margin-top: 4px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: #555;
+            font-size: 0.8rem;
+            line-height: 1.8;
+        }
+        footer a { color: #4CAF50; text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+
+        @media (max-width: 600px) {
+            h1 { font-size: 1.5rem; }
+            .stats-bar { grid-template-columns: repeat(2, 1fr); }
+            .detail-stats { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>EPA Enforcement Check</h1>
+            <p class="subtitle">Search environmental violation records by company name</p>
+        </header>
+
+        <div class="search-section">
+            <input type="text" id="search" class="search-input" placeholder="Search by company name..." autocomplete="off">
+            <p class="search-hint">Try: "United Parcel Service", "Tyson", "3M", or any company name</p>
+        </div>
+
+        <div class="stats-bar" id="stats-bar">
+            <div class="stat-item"><div class="stat-value" id="stat-companies">--</div><div class="stat-label">Companies</div></div>
+            <div class="stat-item"><div class="stat-value" id="stat-facilities">--</div><div class="stat-label">Facilities</div></div>
+            <div class="stat-item"><div class="stat-value" id="stat-penalties">--</div><div class="stat-label">Penalties</div></div>
+            <div class="stat-item"><div class="stat-value" id="stat-actions">--</div><div class="stat-label">Formal Actions</div></div>
+        </div>
+
+        <div id="results" class="results"></div>
+        <div id="detail" class="detail-panel"></div>
+
+        <footer>
+            Data: <a href="https://echo.epa.gov/tools/data-downloads" target="_blank" rel="noopener">EPA ECHO Exporter</a> (updated weekly)<br>
+            Covers Clean Air Act, Clean Water Act, RCRA, Safe Drinking Water Act, TRI, and GHG Reporting<br>
+            Facility-level records from 3.1M+ regulated facilities nationwide<br>
+            <br>
+            <a href="https://github.com/GreatTombProductions/epa-enforcement" target="_blank" rel="noopener">Source Code</a>
+        </footer>
+    </div>
+
+<script>
+const PROG_NAMES = {
+    CAA: 'Clean Air Act', CWA: 'Clean Water Act',
+    RCRA: 'Hazardous Waste (RCRA)', SDWA: 'Safe Drinking Water',
+    TRI: 'Toxics Release Inventory', GHG: 'Greenhouse Gas'
+};
+const PROG_SHORT = { A: 'CAA', W: 'CWA', R: 'RCRA', S: 'SDWA', T: 'TRI', G: 'GHG' };
+
+// Index format: [name, hash, facility_count, penalties, formal_actions, nc_quarters, snc_count, states_str]
+const IDX = { NAME: 0, HASH: 1, FAC: 2, PEN: 3, FA: 4, NC: 5, SNC: 6, ST: 7 };
+
+let meta = null;
+let indexCache = {};  // letter -> array of entries
+let detailCache = {}; // shard_key -> {hash: facilities}
+let allResults = [];
+let displayedCount = 0;
+const PAGE_SIZE = 25;
+
+function fmt(n) {
+    if (n >= 1e9) return '$' + (n / 1e9).toFixed(1) + 'B';
+    if (n >= 1e6) return '$' + (n / 1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return '$' + (n / 1e3).toFixed(0) + 'K';
+    return '$' + n.toLocaleString();
+}
+function fmtN(n) {
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+    return n.toLocaleString();
+}
+
+async function loadMeta() {
+    const r = await fetch('data/meta.json');
+    meta = await r.json();
+    document.getElementById('stat-companies').textContent = fmtN(meta.companies_indexed);
+    document.getElementById('stat-facilities').textContent = fmtN(meta.facilities_with_enforcement);
+    document.getElementById('stat-penalties').textContent = fmt(meta.total_penalties);
+    document.getElementById('stat-actions').textContent = fmtN(meta.total_formal_actions);
+}
+
+async function loadIndex(letter) {
+    const k = letter.toLowerCase();
+    if (indexCache[k]) return indexCache[k];
+    try {
+        const r = await fetch(`data/index_${k}.json`);
+        if (!r.ok) return [];
+        const data = await r.json();
+        indexCache[k] = data;
+        return data;
+    } catch { return []; }
+}
+
+async function loadDetail(hash) {
+    const sk = hash.substring(0, 2);
+    if (detailCache[sk]) return detailCache[sk][hash] || [];
+    try {
+        const r = await fetch(`data/d/${sk}.json`);
+        if (!r.ok) return [];
+        const data = await r.json();
+        detailCache[sk] = data;
+        return data[hash] || [];
+    } catch { return []; }
+}
+
+async function search(query) {
+    const q = query.trim().toUpperCase();
+    if (q.length < 2) {
+        document.getElementById('results').innerHTML = '';
+        return;
+    }
+
+    // Determine which index shards to load
+    const first = q[0];
+    const letter = first.match(/[A-Z]/) ? first : '_';
+
+    document.getElementById('results').innerHTML = '<div class="loading">Searching...</div>';
+
+    const entries = await loadIndex(letter);
+    const matches = entries.filter(e => e[IDX.NAME].toUpperCase().includes(q));
+    matches.sort((a, b) => b[IDX.PEN] - a[IDX.PEN]);
+
+    allResults = matches;
+    displayedCount = 0;
+    renderResults();
+}
+
+function renderResults() {
+    const container = document.getElementById('results');
+    if (allResults.length === 0) {
+        container.innerHTML = '<div class="no-results">No matching companies found</div>';
+        return;
+    }
+
+    const toShow = allResults.slice(0, displayedCount + PAGE_SIZE);
+    displayedCount = toShow.length;
+
+    let html = `<div class="result-count">${allResults.length.toLocaleString()} compan${allResults.length === 1 ? 'y' : 'ies'} found</div>`;
+
+    for (const e of toShow) {
+        const pen = e[IDX.PEN];
+        const states = e[IDX.ST] ? e[IDX.ST].split(',').slice(0, 5).join(', ') : '';
+        const moreStates = e[IDX.ST] ? e[IDX.ST].split(',').length - 5 : 0;
+        const statesStr = states + (moreStates > 0 ? ` +${moreStates} more` : '');
+
+        html += `<div class="result-card" onclick="showDetail('${e[IDX.HASH]}', '${e[IDX.NAME].replace(/'/g, "\\'")}')">
+            <div class="result-name">${escHtml(e[IDX.NAME])}</div>
+            <div class="result-meta">
+                <span>${e[IDX.FAC].toLocaleString()} facilit${e[IDX.FAC] === 1 ? 'y' : 'ies'}</span>
+                ${pen > 0 ? `<span class="penalty-val">${fmt(pen)} penalties</span>` : ''}
+                ${e[IDX.FA] > 0 ? `<span>${e[IDX.FA]} formal actions</span>` : ''}
+                ${e[IDX.SNC] > 0 ? `<span class="snc-badge">SNC: ${e[IDX.SNC]}</span>` : ''}
+                ${e[IDX.NC] > 0 ? `<span>${e[IDX.NC]} qtrs noncompliant</span>` : ''}
+            </div>
+            ${statesStr ? `<div style="color:#666;font-size:0.78rem;margin-top:4px">${statesStr}</div>` : ''}
+        </div>`;
+    }
+
+    if (displayedCount < allResults.length) {
+        html += `<button class="more-btn" onclick="renderResults()">Show more (${allResults.length - displayedCount} remaining)</button>`;
+    }
+
+    container.innerHTML = html;
+}
+
+async function showDetail(hash, name) {
+    const panel = document.getElementById('detail');
+    panel.innerHTML = '<div class="loading">Loading facility details...</div>';
+    panel.classList.add('active');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    const facilities = await loadDetail(hash);
+    if (!facilities || facilities.length === 0) {
+        panel.innerHTML = '<div class="no-results">No facility details available</div>';
+        return;
+    }
+
+    // Compute aggregate stats
+    const totalPen = facilities.reduce((s, f) => s + (f.pen || 0), 0);
+    const totalFA = facilities.reduce((s, f) => s + (f.fa || 0), 0);
+    const totalInsp = facilities.reduce((s, f) => s + (f.insp || 0), 0);
+    const totalNC = facilities.reduce((s, f) => s + (f.nc || 0), 0);
+    const activeCount = facilities.filter(f => f.act).length;
+    const sncCount = facilities.filter(f => f.snc).length;
+    const states = [...new Set(facilities.map(f => f.st).filter(Boolean))].sort();
+
+    let html = `
+        <div class="detail-header">
+            <div class="detail-title">${escHtml(name)}</div>
+            <button class="close-btn" onclick="closeDetail()">Close</button>
+        </div>
+        <div class="detail-stats">
+            <div class="detail-stat"><div class="val">${facilities.length}</div><div class="lbl">Facilities</div></div>
+            <div class="detail-stat"><div class="val">${activeCount}</div><div class="lbl">Active</div></div>
+            ${totalPen > 0 ? `<div class="detail-stat"><div class="val" style="color:#ff5252">${fmt(totalPen)}</div><div class="lbl">Penalties</div></div>` : ''}
+            <div class="detail-stat"><div class="val">${totalFA}</div><div class="lbl">Formal Actions</div></div>
+            <div class="detail-stat"><div class="val">${totalInsp}</div><div class="lbl">Inspections</div></div>
+            ${totalNC > 0 ? `<div class="detail-stat"><div class="val">${totalNC}</div><div class="lbl">Qtrs Noncompliant</div></div>` : ''}
+            ${sncCount > 0 ? `<div class="detail-stat"><div class="val" style="color:#ff5252">${sncCount}</div><div class="lbl">SNC Facilities</div></div>` : ''}
+        </div>
+        ${states.length > 1 ? `<div style="color:#888;font-size:0.8rem;margin-bottom:16px">Operating in: ${states.join(', ')}</div>` : ''}
+        <div class="facilities-section">
+            <h3>Facilities (${facilities.length})</h3>
+    `;
+
+    const INITIAL_SHOW = 20;
+    const facToShow = facilities.slice(0, INITIAL_SHOW);
+
+    html += facToShow.map(f => renderFacility(f)).join('');
+
+    if (facilities.length > INITIAL_SHOW) {
+        html += `<div id="more-fac-container"></div>`;
+        html += `<button class="show-more-fac" id="show-more-fac" onclick="showMoreFacilities('${hash}', ${INITIAL_SHOW})">
+            Show all ${facilities.length} facilities
+        </button>`;
+    }
+
+    html += `</div>`;
+    panel.innerHTML = html;
+
+    // Store for show-more
+    window._currentFacilities = facilities;
+}
+
+function showMoreFacilities(hash, startIdx) {
+    const facs = window._currentFacilities;
+    if (!facs) return;
+    const container = document.getElementById('more-fac-container');
+    const remaining = facs.slice(startIdx);
+    container.innerHTML = remaining.map(f => renderFacility(f)).join('');
+    document.getElementById('show-more-fac').style.display = 'none';
+}
+
+function renderFacility(f) {
+    const loc = [f.city, f.st].filter(Boolean).join(', ');
+    const addr = f.addr ? `${f.addr}, ${loc} ${f.zip || ''}` : loc;
+    const progs = f.pg ? f.pg.split('').map(c => PROG_SHORT[c]).filter(Boolean) : [];
+
+    let html = `<div class="facility-card">
+        <div class="fac-name">${escHtml(f.nm)}</div>
+        <div class="fac-location">${escHtml(addr)}</div>
+        <div>
+            ${f.act ? '<span class="fac-badge active">Active</span>' : '<span class="fac-badge inactive">Inactive</span>'}
+            ${f.maj ? '<span class="fac-badge major">Major</span>' : ''}
+            ${f.snc ? '<span class="fac-badge snc">SNC</span>' : ''}
+        </div>
+        <div class="fac-stats">
+            ${f.pen ? `<span class="penalty">${fmt(f.pen)} penalties</span>` : ''}
+            ${f.fa ? `<span>${f.fa} formal actions</span>` : ''}
+            ${f.insp ? `<span>${f.insp} inspections</span>` : ''}
+            ${f.nc ? `<span>${f.nc} qtrs noncompliant</span>` : ''}
+            ${f.pc ? `<span>${f.pc} penalty assessments</span>` : ''}
+        </div>`;
+
+    // Compliance status
+    if (f.cs) {
+        const isViolation = f.cs.toLowerCase().includes('violation') || f.cs.toLowerCase().includes('noncompliance') || f.cs.toLowerCase().includes('significant');
+        html += `<div style="margin-top:4px"><span class="compliance-status ${isViolation ? 'violation' : ''}">${escHtml(f.cs)}</span></div>`;
+    }
+
+    // Last actions
+    const dates = [];
+    if (f.lpd) dates.push(`Last penalty: ${f.lpd} (${fmt(f.lpa || 0)})`);
+    if (f.lfa) dates.push(`Last formal action: ${f.lfa}`);
+    if (f.li) dates.push(`Last inspection: ${f.li}`);
+    if (dates.length > 0) {
+        html += `<div style="color:#666;font-size:0.75rem;margin-top:4px">${dates.join(' &middot; ')}</div>`;
+    }
+
+    // Program details
+    if (progs.length > 0) {
+        html += '<div class="fac-programs">';
+        for (const p of progs) {
+            html += `<span class="program-tag ${p.toLowerCase()}">${p}</span>`;
+        }
+        html += '</div>';
+
+        // Program-specific detail
+        for (const p of progs) {
+            const pd = f[p.toLowerCase()];
+            if (!pd) continue;
+            let details = [];
+            if (pd.p) details.push(`${fmt(pd.p)} penalties`);
+            if (pd.f) details.push(`${pd.f} formal actions`);
+            if (pd.e || pd.i) details.push(`${pd.e || pd.i} evaluations`);
+            if (pd.n) details.push(`${pd.n} qtrs noncompliant`);
+            if (pd.s) details.push(pd.s);
+            if (pd.h || pd.x) details.push('Significant Noncompliance');
+            // TRI
+            if (pd.on) details.push(`${fmtN(pd.on)} lbs on-site releases`);
+            if (pd.off) details.push(`${fmtN(pd.off)} lbs off-site transfers`);
+            if (details.length > 0) {
+                html += `<div class="program-detail"><span class="pd-label">${PROG_NAMES[p] || p}:</span> ${details.join(' &middot; ')}</div>`;
+            }
+        }
+    }
+
+    // GHG
+    if (f.ghg) {
+        html += `<div class="program-detail"><span class="pd-label">GHG:</span> ${fmtN(f.ghg)} metric tons CO2e</div>`;
+    }
+
+    // EJ indicator
+    if (f.ej && f.ej > 50) {
+        html += `<div class="ej-indicator">Environmental Justice: ${f.ej}% minority population in surrounding area</div>`;
+    }
+
+    // EPA detail link
+    if (f.url) {
+        html += `<a class="fac-link" href="${f.url}" target="_blank" rel="noopener">View EPA Detailed Facility Report &rarr;</a>`;
+    }
+
+    html += '</div>';
+    return html;
+}
+
+function closeDetail() {
+    document.getElementById('detail').classList.remove('active');
+    document.getElementById('detail').innerHTML = '';
+}
+
+function escHtml(s) {
+    if (!s) return '';
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Debounced search
+let searchTimer = null;
+document.getElementById('search').addEventListener('input', function() {
+    clearTimeout(searchTimer);
+    const q = this.value;
+    closeDetail();
+    if (q.trim().length < 2) {
+        document.getElementById('results').innerHTML = '';
+        return;
+    }
+    searchTimer = setTimeout(() => search(q), 200);
+});
+
+// URL hash support
+function checkHash() {
+    const hash = decodeURIComponent(location.hash.slice(1));
+    if (hash) {
+        document.getElementById('search').value = hash;
+        search(hash);
+    }
+}
+
+loadMeta();
+checkHash();
+window.addEventListener('hashchange', checkHash);
+</script>
+</body>
+</html>
